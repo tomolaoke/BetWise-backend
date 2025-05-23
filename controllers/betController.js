@@ -1,3 +1,5 @@
+const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const Bet = require('../models/Bet');
 const Game = require('../models/Game');
 const User = require('../models/User');
@@ -8,64 +10,105 @@ const formatAmount = (amount, country) => {
   return `$${amount}`;
 };
 
-const placeBet = async (req, res) => {
+const placeBet = asyncHandler(async (req, res) => {
   const { gameId, outcome, stake } = req.body;
 
+  // Validate input
+  if (!gameId || !outcome || !stake) {
+    res.status(400);
+    throw new Error('Please provide gameId, outcome, and stake');
+  }
+
+  if (!['home', 'away', 'draw'].includes(outcome)) {
+    res.status(400);
+    throw new Error('Outcome must be "home", "away", or "draw"');
+  }
+
+  if (stake < 1) {
+    res.status(400);
+    throw new Error('Stake must be at least 1');
+  }
+
+  // Find game
+  const game = await Game.findById(gameId);
+  if (!game) {
+    res.status(404);
+    throw new Error('Match not found');
+  }
+  if (game.result) {
+    res.status(400);
+    throw new Error('Match already ended');
+  }
+  if (!game.odds[outcome]) {
+    res.status(400);
+    throw new Error(`No odds available for outcome "${outcome}"`);
+  }
+
+  // Find user
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+  if (user.wallet < stake) {
+    res.status(400);
+    throw new Error(`Not enough funds! You need ${formatAmount(stake, user.country)}.`);
+  }
+
+  // Use transaction for atomicity
+  const session = await mongoose.startSession();
   try {
-    const game = await Game.findById(gameId);
-    if (!game) return res.status(404).json({ message: 'Match not found' });
-    if (game.result) return res.status(400).json({ message: 'Match already ended' });
+    session.startTransaction();
 
-    const user = await User.findById(req.user.id);
-    if (user.wallet < stake) {
-      return res.status(400).json({ 
-        message: `Not enough funds! You need ${formatAmount(stake, user.country)}.` 
-      });
-    }
-
+    // Create bet
     const bet = new Bet({
       user: req.user.id,
       game: gameId,
       outcome,
       stake,
+      payout: stake * game.odds[outcome],
+      status: 'pending',
     });
 
-    bet.payout = stake * game.odds[outcome]; // Calculate potential winnings
-    await bet.save();
+    // Deduct stake
+    user.wallet -= stake;
 
-    user.wallet -= stake; // Deduct stake
-    await user.save();
+    // Save with session
+    await bet.save({ session });
+    await user.save({ session });
 
-    res.status(201).json({ 
+    await session.commitTransaction();
+
+    res.status(201).json({
       message: `Bet placed successfully! Good luck on ${game.homeTeam} vs ${game.awayTeam}!`,
       bet: {
-        ...bet._doc,
+        ...bet.toObject(),
         stake: formatAmount(bet.stake, user.country),
         payout: formatAmount(bet.payout, user.country),
       },
     });
   } catch (error) {
-    console.error('Error placing bet:', error); // Log the error
-    res.status(500).json({ message: 'Server error—bet not placed!', error: error.message });
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
-};
+});
 
-const getBets = async (req, res) => {
-  try {
-    const bets = await Bet.find({ user: req.user.id }).populate('game');
-    const user = await User.findById(req.user.id);
-    const formattedBets = bets.map(bet => ({
-      ...bet._doc,
-      stake: formatAmount(bet.stake, user.country),
-      payout: formatAmount(bet.payout, user.country),
-    }));
-    res.json({ 
-      message: 'Here’s your betting history—check your wins!', 
-      bets: formattedBets 
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error—can’t fetch bets!' });
-  }
-};
+const getBets = asyncHandler(async (req, res) => {
+  const bets = await Bet.find({ user: req.user.id }).populate('game');
+  const user = await User.findById(req.user.id);
+
+  const formattedBets = bets.map(bet => ({
+    ...bet.toObject(),
+    stake: formatAmount(bet.stake, user.country),
+    payout: formatAmount(bet.payout, user.country),
+  }));
+
+  res.json({
+    message: 'Here’s your betting history—check your wins!',
+    bets: formattedBets,
+  });
+});
 
 module.exports = { placeBet, getBets };
