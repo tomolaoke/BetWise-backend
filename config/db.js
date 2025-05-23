@@ -7,8 +7,8 @@ dotenv.config(); // Load our .env file
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      // useNewUrlParser: true,
+      // useUnifiedTopology: true,
     });
     console.log('MongoDB connected—ready to store games and bets!');
   } catch (error) {
@@ -18,4 +18,3 @@ const connectDB = async () => {
 };
 
 module.exports = connectDB; // Share this function with the app
-
