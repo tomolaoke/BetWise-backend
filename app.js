@@ -13,8 +13,8 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Debug route loading
-console.log('Loading routes...');
+// // Debug route loading
+// console.log('Loading routes...');
 
 // Root route
 app.get('/', (req, res) => {
