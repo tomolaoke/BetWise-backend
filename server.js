@@ -11,6 +11,11 @@ const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}—let’s bet!`);
 });
 
+// Root route for welcome message
+app.get('/', (req, res) => {  
+  res.json({ message: 'Welcome to the BetWise API—place your bets!' });
+});
+
 // Handle server errors
 server.on('error', (error) => {
   console.error('Server error:', error);
