@@ -1,0 +1,51 @@
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const { validationResult } = require('express-validator');
+
+// Create a new admin user (admin-only)
+const createAdmin = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { name, email, password, country } = req.body;
+
+  try {
+    // Check if user already exists
+    let user = await User.findOne({ email });
+    if (user) return res.status(400).json({ message: 'User already exists' });
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create new admin user
+    user = new User({
+      name,
+      email,
+      password: hashedPassword,
+      country,
+      isAdmin: true,
+      wallet: 1500, // Initial admin balance
+    });
+
+    await user.save();
+
+    res.status(201).json({
+      message: `New admin ${name} created! Ready to manage BetWise!`,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        country: user.country,
+        isAdmin: user.isAdmin,
+      },
+    });
+  } catch (error) {
+    console.error('Create admin error:', error);
+    res.status(500).json({ message: 'Server hiccup—try again!' });
+  }
+};
+
+module.exports = { createAdmin };

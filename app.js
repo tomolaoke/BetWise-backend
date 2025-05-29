@@ -5,13 +5,16 @@ const connectDB = require('./config/db');
 
 const app = express();
 
-// Connect to MongoDB (await to ensure connection before routes)
-connectDB().then(() => console.log('MongoDB connected—ready to bet!'));
+// Connect to MongoDB
+connectDB().then(() => console.log(`Best Wishes! - Tomola Oke (CareerEx Cohort3)`));
 
 // Middleware
-app.use(cors()); // Allow frontend access
-app.use(morgan('dev')); // Log requests
-app.use(express.json()); // Parse JSON bodies
+app.use(cors());
+app.use(morgan('dev'));
+app.use(express.json());
+
+// Debug route loading
+console.log('Loading routes...');
 
 // Root route
 app.get('/', (req, res) => {

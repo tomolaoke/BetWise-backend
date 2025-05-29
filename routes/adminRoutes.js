@@ -1,12 +1,20 @@
-// routes/adminRoutes.js
 const express = require('express');
-const { createAdmin } = require('../controllers/adminController');
-const { protect } = require('../middleware/authMiddleware');
-const { admin } = require('../middleware/adminMiddleware');
-
 const router = express.Router();
+const { createAdmin } = require('../controllers/authController');
+const { protect, admin } = require('../middleware/authMiddleware');
+const { check } = require('express-validator');
 
-// Only logged-in admins can create new admins
-router.post('/', protect, admin, createAdmin);
+router.post(
+  '/',
+  [
+    protect,
+    admin,
+    check('name', 'Name is required').not().isEmpty(),
+    check('email', 'Enter a valid email').isEmail(),
+    check('password', 'Password must be 6+ characters').isLength({ min: 6 }),
+    check('country', 'Country is required').not().isEmpty(),
+  ],
+  createAdmin
+);
 
 module.exports = router;
