@@ -70,8 +70,11 @@ Server running on port 5000—let’s bet!
 Your backend is now live at `http://localhost:5000`!
 
 ---
+# POSTMAN DOCUMENTATION URL: 
 
-## Testing with Postman: Be the Referee!
+https://documenter.getpostman.com/view/37688262/2sB2x6kXFe
+
+## Testing with Postman: (Examples)
 Now, let’s test all the APIs using Postman to make sure everything works. Open Postman and set the base URL to `http://localhost:5000`. Each test below shows the request, JSON, and what to expect. Follow these like a playbook!
 
 ### Before You Start
